@@ -109,7 +109,7 @@ class ytVideo:
             elif video_quality == "4": selectedFormat = 'bv[height=360]+ba'
             elif video_quality == "5": selectedFormat = 'bv+ba'
             elif video_quality == "6": 
-                entered_height = int(self.chooseFromOptions("Enter desired video height: ", '/'.join(heightsList)))
+                entered_height = int(self.chooseFromOptions("Enter desired video height", '/'.join(heightsList)))
                 selectedFormat = f'bv[height={entered_height}]+ba'            
         self.run_command(f"yt-dlp.exe --no-playlist -f {selectedFormat} --merge-output-format mp4 -o \Output\%(title)s-%(resolution)s.%(ext)s {self.link}")
     def chooseFromOptions(self,promptText, validChoices):
