@@ -18,9 +18,11 @@ print(Style.RESET_ALL, end='')
 class ytVideo:
 
     url_pattern = "^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$"
-    mp3_command = f"yt-dlp.exe --no-playlist -x --audio-format mp3 -o \Output\%(title)s-%(resolution)s.%(ext)s"
+    mp3_command = f"python yt-dlp --no-playlist -x --audio-format mp3 -o \Output\%(title)s-%(resolution)s.%(ext)s"
     def __init__(self):
-
+        print(Fore.RED, end='')
+        print("[+]Checking yt-dlp version...")
+        self.run_command('python yt-dlp -U')
         while True:
             try:
                 self.file_count = 0
@@ -109,16 +111,16 @@ class ytVideo:
             elif video_quality == "4": selectedFormat = 'bv[height=360]+ba'
             elif video_quality == "5": selectedFormat = 'bv+ba'
             elif video_quality == "6": 
-                entered_height = int(self.chooseFromOptions("Enter desired video height", '/'.join(heightsList)))
+                entered_height = int(self.chooseFromOptions("Enter desired video height: ", '/'.join(heightsList)))
                 selectedFormat = f'bv[height={entered_height}]+ba'            
-        self.run_command(f"yt-dlp.exe --no-playlist -f {selectedFormat} --merge-output-format mp4 -o \Output\%(title)s-%(resolution)s.%(ext)s {self.link}")
+        self.run_command(f"python yt-dlp --no-playlist -f {selectedFormat} --merge-output-format mp4 -o \Output\%(title)s-%(resolution)s.%(ext)s {self.link}")
     def chooseFromOptions(self,promptText, validChoices):
         choice = ''
         while choice not in validChoices.split("/"):
             choice = input(f'{promptText}\n>>> ').lower()
         return choice
     def getFormatsList(self,l):
-        cmdPipe = subprocess.Popen(f"yt-dlp.exe -F {l}", shell=True, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        cmdPipe = subprocess.Popen(f"python yt-dlp -F {l}", shell=True, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
         allFormats = cmdPipe.communicate()[0].decode()
         cmdPipe.terminate()
         #                format-code  mp4/webm     file-size     audio codec if it exists/space    resolution[fps]

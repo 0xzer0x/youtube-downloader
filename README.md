@@ -6,7 +6,9 @@ A minimalistic simple python script that automates the basic functionality of th
 
 #### Requirements:
 
-- yt-dlp.exe file which can be downloaded [here](https://github.com/yt-dlp/yt-dlp/releases/latest)
+- Python 3.6+
+
+- yt-dlp file which can be downloaded [here](https://github.com/yt-dlp/yt-dlp/releases/latest)
 
 - ffmpeg.exe which can be downloaded from [here](https://www.gyan.dev/ffmpeg/builds/#release-builds), download the latest release (the essentials version works fine, no need for the full version), copy the ffmpeg.exe file from the \bin folder in the archive
 
