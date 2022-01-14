@@ -1,4 +1,4 @@
-# automation script for yt-dlp
+# Automation script for yt-dlp
 
 A minimalistic simple python script that automates the basic functionality of the [yt-dlp](https://github.com/yt-dlp/yt-dlp) tool on windows/linux, all downloaded files can be found in the \Output directory
 
