@@ -7,14 +7,9 @@ import sys
 import re
 import subprocess
 import colorama
+import yt_dlp
 
 IS_LINUX = True if sys.platform != "win32" else False
-if not IS_LINUX:
-    colorama.init(convert=True)
-    PY_CMD = "python"
-else:
-    PY_CMD = "python3"
-
 
 class CmdColors:
     """ Terminal color constants """
@@ -30,10 +25,10 @@ class CmdColors:
 os.chdir(pathlib.Path(__file__).parent.resolve())
 
 print(CmdColors.BRRED + CmdColors.BOLD + r'''
-      ___                      ___       
+      ___                      ___
      / _ \__  __ _______ _ __ / _ \__  __
     | | | \ \/ /|_  / _ \ '__| | | \ \/ /
-    | |_| |>  <  / /  __/ |  | |_| |>  < 
+    | |_| |>  <  / /  __/ |  | |_| |>  <
      \___//_/\_\/___\___|_|   \___//_/\_\
  ''')
 print("<~~Python Youtube Downloader~~>".center(47))
@@ -44,17 +39,23 @@ print(CmdColors.ENDC, end='')
 class YtVideo:
     """ Deals with the links and formats of the youtube videos """
 
-    url_pattern = "^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$"
-    if not IS_LINUX:
-        mp3_command = "python yt-dlp --no-playlist -x --audio-format mp3 -o Output\%(title)s-%(resolution)s.%(ext)s"
-    else:
-        mp3_command = "python3 yt-dlp --no-playlist -x --audio-format mp3 -o Output/%\(title\)s-%\(resolution\)s.%\(ext\)s"
+    URL_PATTERN = "^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$"
+
+    OUTPUT_TEMPLATE = {"default": "Output/%(title)s-%(resolution)s.%(ext)s"}
+
+    MP3_OPTS = {"format": "bestaudio", "noplaylist": True, "outtmpl": OUTPUT_TEMPLATE, "postprocessors": [
+        {"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}]}
 
     def __init__(self):
 
-        print(CmdColors.RED, end='')
+        print(CmdColors.WARNING, end='')
         print("[+]Checking yt-dlp version...")
-        self.run_command(f'{PY_CMD} yt-dlp -U')
+        try:
+            with yt_dlp.YoutubeDL() as ytdlp:
+                yt_dlp.update.run_update(ytdlp)
+        except yt_dlp.utils.DownloadError:
+            pass
+        print(CmdColors.ENDC, end="")
 
         while True:
             try:
@@ -70,19 +71,20 @@ class YtVideo:
                 print("Invalid value, please enter a number.")
                 continue
 
+        # create a list of the youtube videos to download
         links_list = []
         for i in range(self.file_count):
             youtube_link = ''
             # Check if youtube link is valid
-            while re.search(self.url_pattern, youtube_link) is None:
+            while re.search(self.URL_PATTERN, youtube_link) is None:
                 youtube_link = input(
                     f"[Options] Please Enter valid link to youtube video #{i+1}\n>>> ")
 
             links_list.append(youtube_link)
 
         # creates a txt file called links_list and adds the links to it
-        with open('links_list.txt', "w", encoding="utf-8") as file:
-            file.write("\n".join(links_list))
+        # with open('links_list.txt', "w", encoding="utf-8") as file:
+        #     file.write("\n".join(links_list))
 
         download_type = self.choose_from_options(
             '[Options] What do you want to save the video as?\n1-Mp4/video file\n2-Mp3/audio file', '1/2')
@@ -99,12 +101,12 @@ class YtVideo:
             if is_batchfile in ["no", "n"]:
 
                 for link_number, link in enumerate(links_list, 1):
+                    self.link = link
                     list_all_formats = self.choose_from_options(
                         f'[Options] List all available download formats for video #{link_number}?(y/n)', 'y/n/yes/no')
-
                     if list_all_formats in ['y', 'yes']:
 
-                        print(CmdColors.RED, end='')
+                        print(CmdColors.WARNING, end='')
                         print('[+]Fetching all available video qualities...')
                         print(CmdColors.ENDC, end='')
 
@@ -124,21 +126,20 @@ class YtVideo:
                             vid_heights.append(vid_format[4].split("p")[0])
 
                         print(CmdColors.ENDC, end='')
-                        self.link = link
+
                         # choose the quality to download from available qualities
                         self.choose_quality_and_download(
                             displayed_formats=True, heights_list=vid_heights)
-
-            # if batch-downloading videos select the quality once
+                    else:
+                        self.choose_quality_and_download(displayed_formats=False)
+            # if batch-downloading videos select the quality once (skips video if it doesn't have the selected quality)
             elif is_batchfile in ['yes', 'y']:
-                self.link = "--batch-file links_list.txt"
                 self.choose_quality_and_download(
                     heights_list=['1080', '720', '480', '360', '144'])
 
-        # Downloading audio from batch file directly in highest audio quality
+        # Downloading audio from list directly in highest audio quality
         elif download_type == "2":
-            self.link = "--batch-file links_list.txt"
-            self.run_command(f"{self.mp3_command} {self.link}")
+            self._ytdlp_download(None, links_to_dl=links_list, audio_only=True)
 
     def choose_quality_and_download(self,
                                     displayed_formats=False,
@@ -162,6 +163,7 @@ class YtVideo:
 
                 if (merge_audio in ['y', 'yes']):
                     selected_format = f"{file_id}+ba"
+
                 else:
                     selected_format = f"{file_id}"
 
@@ -189,7 +191,7 @@ class YtVideo:
                 selected_format = 'bv[height=360]+ba'
 
             elif video_quality == "5":
-                selected_format = 'bv+ba'
+                selected_format = 'bv[ext=mp4]+ba[ext=mp4a]\\bv+ba'
 
             # If user wants to specify a quality not listed
             elif video_quality == "6":
@@ -197,11 +199,28 @@ class YtVideo:
                                                               '/'.join(heights_list)))
                 selected_format = f'bv[height={entered_height}]+ba'
 
-        if IS_LINUX:
-            cmd = f"{PY_CMD} yt-dlp --no-playlist -f {selected_format} --merge-output-format mp4 -o Output/%\(title\)s-%\(resolution\)s.%\(ext\)s {self.link}"
+        self._ytdlp_download(format=selected_format, links_to_dl=[self.link])
+
+    def _ytdlp_download(self, format: str, links_to_dl: list, audio_only=False):
+        """Function that uses the yt_dlp module to download the video
+
+        Arguments:
+            format (str) - the format selection string according to the yt-dlp docs
+
+            links_to_dl (str) - link of the youtube video to download
+
+            audio_only (bool) - download audio only if True
+        """
+        # Setup the yt-dlp options if downloading video else use mp3 options
+        if not audio_only:
+            ytdlp_opts = {"format": format, "noplaylist": True,
+                          "outtmpl": self.OUTPUT_TEMPLATE}
         else:
-            cmd = f"{PY_CMD} yt-dlp --no-playlist -f {selected_format} --merge-output-format mp4 -o Output/%(title)s-%(resolution)s.%(ext)s {self.link}"
-        self.run_command(cmd)
+            ytdlp_opts = self.MP3_OPTS
+
+        print(CmdColors.ENDC)
+        with yt_dlp.YoutubeDL(ytdlp_opts) as ytdl:
+            ytdl.download(links_to_dl)
 
     @staticmethod
     def choose_from_options(prompt_text, valid_choices):
@@ -216,10 +235,10 @@ class YtVideo:
 
     # Use regex to get information about each quality available in a list
     # which are returned in a list of quality lists
-    @staticmethod
+    @ staticmethod
     def get_formats_list(link):
         """ Use subprocess to return the formats returned by yt-dlp as string """
-        cmd_pipe = subprocess.Popen(f"{PY_CMD} yt-dlp -F {link}",
+        cmd_pipe = subprocess.Popen(f"yt-dlp -F {link}",
                                     shell=True,
                                     stdin=subprocess.PIPE,
                                     stderr=subprocess.STDOUT,
@@ -235,27 +254,10 @@ class YtVideo:
         # (group1,group2,group3,group4,group5), etc.]
         return video_formats
 
-    def run_command(self, func_command):
-        """A function to call yt-dlp with the appropriate command depending on os"""
-        try:
-            print(CmdColors.ENDC, end='')
-            print(CmdColors.BRCYAN, end='')
 
-            os.system((f"{func_command}" if IS_LINUX
-                       else f"cmd /c {func_command}"))
+try:
+    main = YtVideo()
+except KeyboardInterrupt:
+    print("\n[!] keyboard interrupt, exiting...")
+    sys.exit()
 
-            print(CmdColors.ENDC, end='')
-
-        except KeyboardInterrupt:
-            print(CmdColors.WARNING, end='')
-            confirm_exit = self.choose_from_options(
-                '[!]Keyboard interrupt,are you sure you want to exit?(y/n)', 'y/n')
-            print(CmdColors.ENDC, end='')
-
-            if confirm_exit == 'y':
-                sys.exit()
-            else:
-                self.run_command(func_command)
-
-
-main = YtVideo()
