@@ -18,6 +18,10 @@ A minimalistic simple python script that automates the basic functionality of th
   - **For linux:**
     `sudo apt install ffmpeg` or install using your distro's package manager
 
+#### Usage
+
+Execute in linux terminal or "Windows Terminal" application on Windows the following command `python ydl_cli.py`
+
 If you have any suggestions/modifications to improve the script, feel free to contact me.
 
 
